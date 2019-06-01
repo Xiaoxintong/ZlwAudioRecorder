@@ -2,7 +2,7 @@ package com.zlw.main.recorderlib;
 
 
 import android.annotation.SuppressLint;
-import android.app.Application;
+import android.content.Context;
 
 import com.zlw.main.recorderlib.recorder.RecordConfig;
 import com.zlw.main.recorderlib.recorder.RecordHelper;
@@ -21,7 +21,7 @@ public class RecordManager {
     private static final String TAG = RecordManager.class.getSimpleName();
     @SuppressLint("StaticFieldLeak")
     private volatile static RecordManager instance;
-    private Application context;
+    private Context context;
 
     private RecordManager() {
     }
@@ -40,11 +40,11 @@ public class RecordManager {
     /**
      * 初始化
      *
-     * @param application Application
+     * @param Context context
      * @param showLog     是否开启日志
      */
-    public void init(Application application, boolean showLog) {
-        this.context = application;
+    public void init(Context context, boolean showLog) {
+        this.context = context;
         Logger.IsDebug = showLog;
     }
 
@@ -56,6 +56,16 @@ public class RecordManager {
         Logger.i(TAG, "start...");
         RecordService.startRecording(context);
     }
+
+    public void start(String fileName) {
+        if (context == null) {
+            Logger.e(TAG, "未进行初始化");
+            return;
+        }
+        Logger.i(TAG, "start...");
+        RecordService.startRecording(context, fileName);
+    }
+
 
     public void stop() {
         if (context == null) {
@@ -76,6 +86,10 @@ public class RecordManager {
             return;
         }
         RecordService.pauseRecording(context);
+    }
+
+    public String getRecordPath() {
+        return RecordService.getRecordPath();
     }
 
     /**

@@ -10,7 +10,6 @@ import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.main.zlw.zlwaudiorecorder.base.MyApp;
 import com.main.zlw.zlwaudiorecorder.utils.Logger;
 import com.yanzhenjie.permission.AndPermission;
 import com.yanzhenjie.permission.runtime.Permission;
@@ -125,7 +124,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void initRecord() {
-        recordManager.init(MyApp.getInstance(), BuildConfig.DEBUG);
+        recordManager.init(MainActivity.this, BuildConfig.DEBUG);
         recordManager.changeFormat(RecordConfig.RecordFormat.WAV);
         String recordDir = String.format(Locale.getDefault(), "%s/Record/com.zlw.main/",
                 Environment.getExternalStorageDirectory().getAbsolutePath());
