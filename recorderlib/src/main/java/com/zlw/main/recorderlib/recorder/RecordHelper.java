@@ -120,6 +120,20 @@ public class RecordHelper {
         if (state == RecordState.PAUSE) {
             makeFile();
             state = RecordState.IDLE;
+
+            if (currentConfig.getFormat()== RecordConfig.RecordFormat.MP3) {
+                if (mp3EncodeThread != null) {
+                    mp3EncodeThread.stopSafe(new Mp3EncodeThread.EncordFinishListener() {
+                        @Override
+                        public void onFinish() {
+                            notifyFinish();
+                            mp3EncodeThread = null;
+                        }
+                    });
+                } else {
+                    notifyFinish();
+                }
+            }
         } else {
             state = RecordState.STOP;
         }
