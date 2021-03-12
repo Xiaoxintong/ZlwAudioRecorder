@@ -29,6 +29,11 @@ public class RecordConfig implements Serializable {
      */
     private int sampleRate = 16000;
 
+    /**
+     * 输出比特率
+     */
+    private int outBitRate = 32;
+
     /*
         * 录音文件存放路径，默认sdcard/Record
      */
@@ -159,6 +164,14 @@ public class RecordConfig implements Serializable {
         return this;
     }
 
+    public int getOutBitRate() {
+        return outBitRate;
+    }
+
+    public RecordConfig setOutBitRate(int outBitRate) {
+        this.outBitRate = outBitRate;
+        return this;
+    }
 
     @Override
     public String toString() {
