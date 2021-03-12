@@ -28,7 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-import fftlib.FFT;
+import fftlib.FftFactory;
 
 /**
  * @author zhaolewei on 2018/7/10.
@@ -93,7 +93,7 @@ public class RecordHelper {
 
     public void start(String filePath, RecordConfig config) {
         this.currentConfig = config;
-        if (state != RecordState.IDLE) {
+        if (state != RecordState.IDLE && state != RecordState.STOP) {
             Logger.e(TAG, "状态异常当前状态： %s", state.name());
             return;
         }
@@ -134,10 +134,12 @@ public class RecordHelper {
                     notifyFinish();
                 }
             }
+            notifyState();
+            stopMp3Encoded();
         } else {
             state = RecordState.STOP;
+            notifyState();
         }
-        notifyState();
     }
 
     void pause() {
@@ -207,8 +209,10 @@ public class RecordHelper {
         });
     }
 
+    private FftFactory fftFactory = new FftFactory(FftFactory.Level.Original);
+
     private void notifyData(final byte[] data) {
-        if (recordDataListener == null && recordSoundSizeListener == null) {
+        if (recordDataListener == null && recordSoundSizeListener == null && recordFftDataListener == null) {
             return;
         }
         mainHandler.post(new Runnable() {
@@ -218,105 +222,32 @@ public class RecordHelper {
                     recordDataListener.onData(data);
                 }
 
-                if (recordFftDataListener != null) {
-                    byte[] fftData = makeData(data);
+                if (recordFftDataListener != null || recordSoundSizeListener != null) {
+                    byte[] fftData = fftFactory.makeFftData(data);
                     if (fftData != null) {
                         if (recordSoundSizeListener != null) {
                             recordSoundSizeListener.onSoundSize(getDb(fftData));
                         }
-                        recordFftDataListener.onFftData(fftData);
+                        if (recordFftDataListener != null) {
+                            recordFftDataListener.onFftData(fftData);
+                        }
                     }
                 }
-
             }
         });
     }
 
-    private byte[] makeData(byte[] data) {//data.length = 1280
-        if (data.length < 1024) {
-            return null;
-        }
-        try {
-            double[] ds = toDouble(ByteUtils.toShorts(data));
-
-            double[] fft = FFT.fft(ds, 62);
-            //start
-            double[] newFft = new double[128];
-            for (int i = 16; i < 16 + newFft.length; i++) {
-                if (i < 24) {
-                    newFft[i - 16] = fft[i] * 0.2;
-                } else if (i < 36) {
-                    newFft[i - 16] = fft[i] * 0.4;
-                } else if (i < 48) {
-                    newFft[i - 16] = fft[i] * 0.6;
-                } else {
-                    newFft[i - 16] = fft[i];
-                }
-                if (newFft[i - 16] < 10 * 128) {
-                    newFft[i - 16] = newFft[i - 16] * 0.6;
-                }
-            }
-            fft = newFft;
-            //end
-            int step = fft.length / 128;
-            byte[] fftBytes = new byte[128];
-
-
-            int scale = 128;//压缩128基准
-            double max = getMax(fft);
-            if (max > 128 * 128) {//高音优化
-                scale = (int) (max / 128) + 2;
-            }
-
-            for (int i = 0; i < fftBytes.length; i++) {
-                double tmp = fft[i * step] / scale;
-                if (tmp > 127) {
-                    fftBytes[i] = 127;
-                } else if (tmp < -128) {
-                    fftBytes[i] = -127;
-
-                } else {
-                    fftBytes[i] = (byte) tmp;
-                }
-            }
-            return fftBytes;
-        } catch (Exception e) {
-            Logger.w(TAG, e.getMessage());
-        }
-        return null;
-    }
-
-    private double getMax(double[] data) {
-        double max = 0;
-        for (int i = 0; i < data.length; i++) {
-            if (data[i] > max) {
-                max = data[i];
-            }
-        }
-
-        return max;
-    }
-
-    public int getDb(byte[] data) {
+    private int getDb(byte[] data) {
         double sum = 0;
         double ave;
         int length = data.length > 128 ? 128 : data.length;
-        for (int i = 0; i < length; i++) {
+        int offsetStart = 8;
+        for (int i = offsetStart; i < length; i++) {
             sum += data[i];
         }
-        ave = sum / length;
-        sum += (Math.pow(ave, 4) / Math.pow((128F - ave), 2));
-        int i = (int) (Math.log10((sum / length) * 53536F) * 10);
+        ave = (sum / (length - offsetStart)) * 65536 / 128f;
+        int i = (int) (Math.log10(ave) * 20);
         return i < 0 ? 27 : i;
-    }
-
-    private double[] toDouble(short[] bytes) {
-        int length = 512;
-        double[] ds = new double[length];
-        for (int i = 0; i < length; i++) {
-            ds[i] = bytes[i];
-        }
-        return ds;
     }
 
     private void initMp3EncoderThread(int bufferSize) {
@@ -341,6 +272,8 @@ public class RecordHelper {
             if (currentConfig.getFormat() == RecordConfig.RecordFormat.MP3) {
                 if (mp3EncodeThread == null) {
                     initMp3EncoderThread(bufferSize);
+                } else {
+                    Logger.e(TAG, "mp3EncodeThread != null, 请检查代码");
                 }
             }
         }
@@ -424,20 +357,24 @@ public class RecordHelper {
             if (state != RecordState.PAUSE) {
                 state = RecordState.IDLE;
                 notifyState();
-                if (mp3EncodeThread != null) {
-                    mp3EncodeThread.stopSafe(new Mp3EncodeThread.EncordFinishListener() {
-                        @Override
-                        public void onFinish() {
-                            notifyFinish();
-                            mp3EncodeThread = null;
-                        }
-                    });
-                } else {
-                    notifyFinish();
-                }
+                stopMp3Encoded();
             } else {
                 Logger.d(TAG, "暂停");
             }
+        }
+    }
+
+    private void stopMp3Encoded() {
+        if (mp3EncodeThread != null) {
+            mp3EncodeThread.stopSafe(new Mp3EncodeThread.EncordFinishListener() {
+                @Override
+                public void onFinish() {
+                    notifyFinish();
+                    mp3EncodeThread = null;
+                }
+            });
+        } else {
+            Logger.e(TAG, "mp3EncodeThread is null, 代码业务流程有误，请检查！！ ");
         }
     }
 
@@ -512,11 +449,11 @@ public class RecordHelper {
             return false;
         } finally {
             try {
-                if (fos != null) {
-                    fos.close();
-                }
                 if (outputStream != null) {
                     outputStream.close();
+                }
+                if (fos != null) {
+                    fos.close();
                 }
             } catch (IOException e) {
                 e.printStackTrace();
