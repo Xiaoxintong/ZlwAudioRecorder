@@ -18,6 +18,6 @@ public class Mp3Encoder {
     public native static void init(int inSampleRate, int outChannel, int outSampleRate, int outBitrate, int quality);
 
     public static void init(int inSampleRate, int outChannel, int outSampleRate, int outBitrate) {
-        init(inSampleRate, outChannel, outSampleRate, outBitrate, 7);
+        init(inSampleRate, outChannel, outSampleRate, outBitrate, 5);
     }
 }

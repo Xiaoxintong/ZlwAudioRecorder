@@ -37,7 +37,7 @@ public class RecordConfig implements Serializable {
     /**
      * 质量
      */
-    private int quality = 7;
+    private int quality = 5;
 
     /*
         * 录音文件存放路径，默认sdcard/Record
@@ -199,8 +199,9 @@ public class RecordConfig implements Serializable {
         return quality;
     }
 
-    public void setQuality(int quality) {
+    public RecordConfig setQuality(int quality) {
         this.quality = quality;
+        return this;
     }
 
     @Override
