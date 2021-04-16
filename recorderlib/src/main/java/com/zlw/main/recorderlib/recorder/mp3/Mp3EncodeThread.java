@@ -39,9 +39,9 @@ public class Mp3EncodeThread extends Thread {
         RecordConfig currentConfig = RecordService.getCurrentConfig();
         int sampleRate = currentConfig.getSampleRate();
 
-        Logger.w(TAG, "in_sampleRate:%s，getChannelCount:%s ，out_sampleRate：%s out_bitrate： %s,",
-                sampleRate, currentConfig.getChannelCount(), sampleRate, currentConfig.getOutBitRate());
-        Mp3Encoder.init(sampleRate, currentConfig.getChannelCount(), sampleRate, currentConfig.getOutBitRate());
+        Logger.w(TAG, "in_sampleRate:%s，getChannelCount:%s ，out_sampleRate：%s out_bitrate： %s, quality： %s",
+                sampleRate, currentConfig.getChannelCount(), sampleRate, currentConfig.getOutBitRate(), currentConfig.getQuality());
+        Mp3Encoder.init(sampleRate, currentConfig.getChannelCount(), sampleRate, currentConfig.getOutBitRate(), currentConfig.getQuality());
     }
 
     @Override

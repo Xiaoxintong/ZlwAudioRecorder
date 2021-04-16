@@ -34,6 +34,11 @@ public class RecordConfig implements Serializable {
      */
     private int outBitRate = 32;
 
+    /**
+     * 质量
+     */
+    private int quality = 7;
+
     /*
         * 录音文件存放路径，默认sdcard/Record
      */
@@ -65,6 +70,23 @@ public class RecordConfig implements Serializable {
         this.sampleRate = sampleRate;
     }
 
+    /**
+     * @param format         录音文件的格式
+     * @param channelConfig  声道配置
+     *                       单声道：See {@link AudioFormat#CHANNEL_IN_MONO}
+     *                       双声道：See {@link AudioFormat#CHANNEL_IN_STEREO}
+     * @param encodingConfig 位宽配置
+     *                       8Bit： See {@link AudioFormat#ENCODING_PCM_8BIT}
+     *                       16Bit: See {@link AudioFormat#ENCODING_PCM_16BIT},
+     * @param sampleRate     采样率 hz: 8000/16000/44100
+     */
+    public RecordConfig(RecordFormat format, int channelConfig, int encodingConfig, int sampleRate, int quality) {
+        this.format = format;
+        this.channelConfig = channelConfig;
+        this.encodingConfig = encodingConfig;
+        this.sampleRate = sampleRate;
+        this.quality = quality;
+    }
 
     public String getRecordDir() {
         return recordDir;
@@ -171,6 +193,14 @@ public class RecordConfig implements Serializable {
     public RecordConfig setOutBitRate(int outBitRate) {
         this.outBitRate = outBitRate;
         return this;
+    }
+
+    public int getQuality() {
+        return quality;
+    }
+
+    public void setQuality(int quality) {
+        this.quality = quality;
     }
 
     @Override
