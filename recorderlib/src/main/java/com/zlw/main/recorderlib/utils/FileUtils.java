@@ -1,6 +1,8 @@
 package com.zlw.main.recorderlib.utils;
 
 
+import android.content.Context;
+
 import java.io.File;
 import java.util.Date;
 
@@ -76,5 +78,14 @@ public class FileUtils {
      */
     public static boolean isFileExists(final File file) {
         return file != null && file.exists();
+    }
+
+    public static String getInnerDir(Context context, String subDirName) {
+        String path = context.getExternalFilesDir(subDirName).getAbsolutePath();
+        if (!path.endsWith("/")) {
+            path = path + "/";
+        }
+
+        return path;
     }
 }

@@ -3,6 +3,9 @@ package com.zlw.main.recorderlib;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.app.Application;
+import android.media.projection.MediaProjection;
+import android.os.Build;
 
 import com.zlw.main.recorderlib.recorder.RecordConfig;
 import com.zlw.main.recorderlib.recorder.RecordHelper;
@@ -23,6 +26,8 @@ public class RecordManager {
     private volatile static RecordManager instance;
     private Context context;
 
+    private MediaProjection mediaProjection;
+
     private RecordManager() {
     }
 
@@ -39,9 +44,8 @@ public class RecordManager {
 
     /**
      * 初始化
-     *
-     * @param Context context
-     * @param showLog     是否开启日志
+     * @param context
+     * @param showLog 是否开启日志
      */
     public void init(Context context, boolean showLog) {
         this.context = context;
@@ -137,6 +141,20 @@ public class RecordManager {
         return RecordService.changeRecordConfig(recordConfig);
     }
 
+    /**
+     * RecordConfig.SOURCE_MIC
+     * RecordConfig.SOURCE_SYSTEM
+     *
+     * @param source 音源
+     */
+    public boolean setSource(int source) {
+        if (Build.VERSION.SDK_INT >= 29) {
+            RecordService.getRecordConfig().setSource(source);
+            return true;
+        }
+        return false;
+    }
+
     public RecordConfig getRecordConfig() {
         return RecordService.getRecordConfig();
     }
@@ -157,4 +175,11 @@ public class RecordManager {
         return RecordService.getState();
     }
 
+    public void setMediaProjection(MediaProjection mediaProjection) {
+        this.mediaProjection = mediaProjection;
+    }
+
+    public MediaProjection getMediaProjection() {
+        return mediaProjection;
+    }
 }

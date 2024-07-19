@@ -1,6 +1,4 @@
-# ZlwAudioRecorder   
-
->工作繁忙，2020 暂不维护，谅解，如需沟通，可加QQ：739043667
+# ZlwAudioRecorder
 
 ### 功能
 1. 使用AudioRecord进行录音
@@ -9,6 +7,7 @@
 4. 获取wav/mp3录音文件的时长
 5. 可配置录音的采样率、位宽  （v1.04更新）
 5. 录音可视化 （v1.05更新）
+5. 音源支持内录（Android10及以上版本支持） （v1.09更新）
 
 ### 博客
 https://www.jianshu.com/p/c0222de2faed
@@ -17,7 +16,7 @@ https://www.jianshu.com/p/c0222de2faed
 [![](https://jitpack.io/v/zhaolewei/ZlwAudioRecorder.svg)](https://jitpack.io/#zhaolewei/ZlwAudioRecorder)
 
     dependencies {
-	        implementation 'com.github.zhaolewei:ZlwAudioRecorder:v1.07'
+	        implementation 'com.github.zhaolewei:ZlwAudioRecorder:v1.09'
 	}
 
     allprojects {
@@ -37,13 +36,13 @@ https://www.jianshu.com/p/c0222de2faed
     */
     RecordManager.getInstance().init(MyApp.getInstance(), false);
    ```
-* 在清单文件中注册Services   
-   
+* 在清单文件中注册Services
+
     ```java
    <service android:name="com.zlw.main.recorderlib.recorder.RecordService" />
    ```
- * 确保有录音权限
-   
+* 确保有录音权限
+
 2. 配置录音参数
 
 * 修改录音格式(默认:WAV)
@@ -55,6 +54,11 @@ https://www.jianshu.com/p/c0222de2faed
     ```java       
          RecordManager.getInstance().changeRecordConfig(recordManager.getRecordConfig().setSampleRate(16000));
          RecordManager.getInstance().changeRecordConfig(recordManager.getRecordConfig().setEncodingConfig(AudioFormat.ENCODING_PCM_8BIT));
+    ```
+* 修改录音音源
+    ```java       
+         RecordManager.getInstance().setSource(RecordConfig.SOURCE_MIC); // 麦克风
+         RecordManager.getInstance().setSource(RecordConfig.SOURCE_SYSTEM); //系统内录
     ```
 * 修改录音文件存放位置（默认sdcard/Record）
     ```java       
@@ -73,7 +77,7 @@ https://www.jianshu.com/p/c0222de2faed
        }
    });
     ```
-* 录音结果监听 
+* 录音结果监听
     ```java     
    RecordManager.getInstance().setRecordResultListener(new RecordResultListener() {
        @Override

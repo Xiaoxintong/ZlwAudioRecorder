@@ -18,7 +18,7 @@
         android:id="@+id/tvSoundSize"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="声音大小：%s" />
+        android:text="声音大小：0dp" />
 
     <View
         android:layout_width="match_parent"
@@ -137,6 +137,34 @@
             android:text="16Bit" />
     </RadioGroup>
 
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="音源：" />
+
+    <RadioGroup
+        android:id="@+id/tbSource"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <RadioButton
+            android:id="@+id/rbMic"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:checked="true"
+            android:paddingEnd="20dp"
+            android:text="麦克风" />
+
+        <RadioButton
+            android:id="@+id/rbSystem"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingEnd="20dp"
+            android:text="内录(Android10+版本支持)" />
+    </RadioGroup>
+
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
@@ -156,7 +184,7 @@
         android:layout_height="wrap_content"
         android:text="停止" />
 
-    <com.main.zlw.zlwaudiorecorder.AudioView
+    <com.zlw.audio_recorder.widget.AudioView
         android:id="@+id/audioView"
         android:layout_width="match_parent"
         android:layout_height="150dp" />

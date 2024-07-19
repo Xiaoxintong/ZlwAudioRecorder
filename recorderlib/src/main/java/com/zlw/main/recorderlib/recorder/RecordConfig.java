@@ -1,7 +1,7 @@
 package com.zlw.main.recorderlib.recorder;
 
 import android.media.AudioFormat;
-import android.os.Environment;
+import android.text.TextUtils;
 
 import java.io.Serializable;
 import java.util.Locale;
@@ -10,6 +10,16 @@ import java.util.Locale;
  * @author zhaolewei on 2018/7/11.
  */
 public class RecordConfig implements Serializable {
+
+    /**
+     * 音源：麦克风
+     */
+    public static int SOURCE_MIC = 0;
+    /**
+     * 音源：系统声音（内录）Android 10及以上版本支持
+     */
+    public static int SOURCE_SYSTEM = 1;
+
     /**
      * 录音格式 默认WAV格式
      */
@@ -23,6 +33,13 @@ public class RecordConfig implements Serializable {
      * 位宽
      */
     private int encodingConfig = AudioFormat.ENCODING_PCM_16BIT;
+
+    /**
+     * 音源
+     * 0: 麦克风
+     * 1: 系统声音（内录）
+     */
+    private int source = 0;
 
     /**
      * 采样率
@@ -40,11 +57,9 @@ public class RecordConfig implements Serializable {
     private int quality = 5;
 
     /*
-        * 录音文件存放路径，默认sdcard/Record
+     * 录音文件存放路径，默认sdcard/Record
      */
-    private String recordDir = String.format(Locale.getDefault(),
-            "%s/Record/",
-            Environment.getExternalStorageDirectory().getAbsolutePath());
+    private String recordDir = "";
 
     public RecordConfig() {
     }
@@ -89,7 +104,7 @@ public class RecordConfig implements Serializable {
     }
 
     public String getRecordDir() {
-        return recordDir;
+        return (null == recordDir || TextUtils.isEmpty(recordDir)) ? "" : recordDir;
     }
 
     public void setRecordDir(String recordDir) {
@@ -102,7 +117,7 @@ public class RecordConfig implements Serializable {
      * @return 采样位宽 0: error
      */
     public int getEncoding() {
-        if(format == RecordFormat.MP3){//mp3后期转换
+        if (format == RecordFormat.MP3) { //mp3后期转换
             return 16;
         }
 
@@ -113,6 +128,14 @@ public class RecordConfig implements Serializable {
         } else {
             return 0;
         }
+    }
+
+    public void setSource(int source) {
+        this.source = source;
+    }
+
+    public int getSource() {
+        return source;
     }
 
     /**
@@ -166,7 +189,7 @@ public class RecordConfig implements Serializable {
     }
 
     public int getEncodingConfig() {
-        if(format == RecordFormat.MP3){//mp3后期转换
+        if (format == RecordFormat.MP3) {//mp3后期转换
             return AudioFormat.ENCODING_PCM_16BIT;
         }
         return encodingConfig;

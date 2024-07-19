@@ -64,13 +64,13 @@ public class RecordService extends Service {
         if (bundle != null && bundle.containsKey(ACTION_NAME)) {
             switch (bundle.getInt(ACTION_NAME, ACTION_INVALID)) {
                 case ACTION_START_RECORD:
-                    doStartRecording(bundle.getString(PARAM_PATH));
+                    doStartRecording(this, bundle.getString(PARAM_PATH));
                     break;
                 case ACTION_STOP_RECORD:
                     doStopRecording();
                     break;
                 case ACTION_RESUME_RECORD:
-                    doResumeRecording();
+                    doResumeRecording(this);
                     break;
                 case ACTION_PAUSE_RECORD:
                     doPauseRecording();
@@ -181,14 +181,14 @@ public class RecordService extends Service {
         RecordHelper.getInstance().setRecordFftDataListener(recordFftDataListener);
     }
 
-    private void doStartRecording(String path) {
+    private void doStartRecording(Context context, String path) {
         Logger.v(TAG, "doStartRecording path: %s", path);
-        RecordHelper.getInstance().start(path, currentConfig);
+        RecordHelper.getInstance().start(context, path, currentConfig);
     }
 
-    private void doResumeRecording() {
+    private void doResumeRecording(Context context) {
         Logger.v(TAG, "doResumeRecording");
-        RecordHelper.getInstance().resume();
+        RecordHelper.getInstance().resume(context);
     }
 
     private void doPauseRecording() {

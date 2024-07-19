@@ -1,11 +1,16 @@
 package com.zlw.main.recorderlib.recorder;
 
+import android.annotation.SuppressLint;
+import android.content.Context;
+import android.media.AudioAttributes;
+import android.media.AudioFormat;
+import android.media.AudioPlaybackCaptureConfiguration;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 
+import com.zlw.main.recorderlib.RecordManager;
 import com.zlw.main.recorderlib.recorder.listener.RecordDataListener;
 import com.zlw.main.recorderlib.recorder.listener.RecordFftDataListener;
 import com.zlw.main.recorderlib.recorder.listener.RecordResultListener;
@@ -91,14 +96,14 @@ public class RecordHelper {
         this.recordFftDataListener = recordFftDataListener;
     }
 
-    public void start(String filePath, RecordConfig config) {
+    public void start(Context context, String filePath, RecordConfig config) {
         this.currentConfig = config;
         if (state != RecordState.IDLE && state != RecordState.STOP) {
             Logger.e(TAG, "状态异常当前状态： %s", state.name());
             return;
         }
         resultFile = new File(filePath);
-        String tempFilePath = getTempFilePath();
+        String tempFilePath = getTempFilePath(context);
 
         Logger.d(TAG, "----------------开始录制 %s------------------------", currentConfig.getFormat().name());
         Logger.d(TAG, "参数： %s", currentConfig.toString());
@@ -151,12 +156,12 @@ public class RecordHelper {
         notifyState();
     }
 
-    void resume() {
+    void resume(Context context) {
         if (state != RecordState.PAUSE) {
             Logger.e(TAG, "状态异常当前状态： %s", state.name());
             return;
         }
-        String tempFilePath = getTempFilePath();
+        String tempFilePath = getTempFilePath(context);
         Logger.i(TAG, "tmpPCM File: %s", tempFilePath);
         tmpFile = new File(tempFilePath);
         audioRecordThread = new AudioRecordThread();
@@ -240,14 +245,13 @@ public class RecordHelper {
     private int getDb(byte[] data) {
         double sum = 0;
         double ave;
-        int length = data.length > 128 ? 128 : data.length;
-        int offsetStart = 8;
+        int length = Math.min(data.length, 128);
+        int offsetStart = 0;
         for (int i = offsetStart; i < length; i++) {
-            sum += data[i];
+            sum += data[i] * data[i];
         }
-        ave = (sum / (length - offsetStart)) * 65536 / 128f;
-        int i = (int) (Math.log10(ave) * 20);
-        return i < 0 ? 27 : i;
+        ave = sum / (length - offsetStart);
+        return (int) (Math.log10(ave) * 20);
     }
 
     private void initMp3EncoderThread(int bufferSize) {
@@ -259,6 +263,7 @@ public class RecordHelper {
         }
     }
 
+    @SuppressLint("MissingPermission")
     private class AudioRecordThread extends Thread {
         private AudioRecord audioRecord;
         private int bufferSize;
@@ -267,8 +272,34 @@ public class RecordHelper {
             bufferSize = AudioRecord.getMinBufferSize(currentConfig.getSampleRate(),
                     currentConfig.getChannelConfig(), currentConfig.getEncodingConfig()) * RECORD_AUDIO_BUFFER_TIMES;
             Logger.d(TAG, "record buffer size = %s", bufferSize);
-            audioRecord = new AudioRecord(MediaRecorder.AudioSource.MIC, currentConfig.getSampleRate(),
-                    currentConfig.getChannelConfig(), currentConfig.getEncodingConfig(), bufferSize);
+
+            if (currentConfig.getSource() == RecordConfig.SOURCE_SYSTEM
+                    && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                if (RecordManager.getInstance().getMediaProjection() == null) {
+                    throw new NullPointerException("Error: RecordManager.getInstance().getMediaProjection() is null");
+                }
+                AudioFormat audioFormat = new AudioFormat.Builder()
+                        .setEncoding(currentConfig.getEncodingConfig())
+                        .setSampleRate(currentConfig.getSampleRate())
+                        .setChannelMask(currentConfig.getChannelConfig())
+                        .build();
+                AudioPlaybackCaptureConfiguration audioPlaybackCaptureConfiguration = new AudioPlaybackCaptureConfiguration.Builder(RecordManager.getInstance().getMediaProjection())
+                        .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
+                        .addMatchingUsage(AudioAttributes.USAGE_GAME)
+                        .build();
+
+                audioRecord = new AudioRecord.Builder()
+                        .setAudioFormat(audioFormat)
+                        .setBufferSizeInBytes(bufferSize)
+                        .setAudioPlaybackCaptureConfig(audioPlaybackCaptureConfiguration).build();
+                Logger.i(TAG, "new audioRecord");
+            } else {
+                audioRecord = new AudioRecord(MediaRecorder.AudioSource.MIC, currentConfig.getSampleRate(),
+                        currentConfig.getChannelConfig(), currentConfig.getEncodingConfig(), bufferSize);
+                Logger.i(TAG, "old audioRecord");
+            }
+
+
             if (currentConfig.getFormat() == RecordConfig.RecordFormat.MP3) {
                 if (mp3EncodeThread == null) {
                     initMp3EncoderThread(bufferSize);
@@ -470,8 +501,9 @@ public class RecordHelper {
      * 根据当前的时间生成相应的文件名
      * 实例 record_20160101_13_15_12
      */
-    private String getTempFilePath() {
-        String fileDir = String.format(Locale.getDefault(), "%s/Record/", Environment.getExternalStorageDirectory().getAbsolutePath());
+    private String getTempFilePath(Context context) {
+        String fileDir = String.format("%sRecord/tmp",
+                FileUtils.getInnerDir(context, ""));
         if (!FileUtils.createOrExistsDir(fileDir)) {
             Logger.e(TAG, "文件夹创建失败：%s", fileDir);
         }

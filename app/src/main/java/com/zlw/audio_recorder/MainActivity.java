@@ -1,10 +1,14 @@
-package com.main.zlw.zlwaudiorecorder;
+package com.zlw.audio_recorder;
 
+import android.app.Activity;
+import android.app.Application;
+import android.content.Context;
 import android.content.Intent;
 import android.media.AudioFormat;
+import android.media.projection.MediaProjection;
+import android.media.projection.MediaProjectionManager;
 import android.os.Bundle;
 import android.os.Environment;
-import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -14,10 +18,10 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.main.zlw.zlwaudiorecorder.utils.Logger;
-import com.main.zlw.zlwaudiorecorder.base.MyApp;
 import com.yanzhenjie.permission.AndPermission;
+import com.yanzhenjie.permission.BuildConfig;
 import com.yanzhenjie.permission.runtime.Permission;
+import com.zlw.audio_recorder.widget.AudioView;
 import com.zlw.loggerlib.Logger;
 import com.zlw.main.recorderlib.RecordManager;
 import com.zlw.main.recorderlib.recorder.RecordConfig;
@@ -26,48 +30,41 @@ import com.zlw.main.recorderlib.recorder.listener.RecordFftDataListener;
 import com.zlw.main.recorderlib.recorder.listener.RecordResultListener;
 import com.zlw.main.recorderlib.recorder.listener.RecordSoundSizeListener;
 import com.zlw.main.recorderlib.recorder.listener.RecordStateListener;
+import com.zlw.main.recorderlib.utils.FileUtils;
 
 import java.io.File;
 import java.util.Locale;
 
-import butterknife.BindView;
-import butterknife.ButterKnife;
-import butterknife.OnClick;
+import androidx.activity.ComponentActivity;
+import androidx.annotation.Nullable;
 
-public class MainActivity extends AppCompatActivity implements AdapterView.OnItemSelectedListener {
+public class MainActivity extends ComponentActivity implements AdapterView.OnItemSelectedListener, View.OnClickListener {
     private static final String TAG = MainActivity.class.getSimpleName();
 
-    @BindView(R.id.btRecord)
     Button btRecord;
-    @BindView(R.id.btStop)
     Button btStop;
-    @BindView(R.id.tvState)
     TextView tvState;
-    @BindView(R.id.tvSoundSize)
     TextView tvSoundSize;
-    @BindView(R.id.rgAudioFormat)
     RadioGroup rgAudioFormat;
-    @BindView(R.id.rgSimpleRate)
     RadioGroup rgSimpleRate;
-    @BindView(R.id.tbEncoding)
     RadioGroup tbEncoding;
-    @BindView(R.id.audioView)
+    RadioGroup tbSource;
     AudioView audioView;
-    @BindView(R.id.spUpStyle)
     Spinner spUpStyle;
-    @BindView(R.id.spDownStyle)
     Spinner spDownStyle;
 
     private boolean isStart = false;
     private boolean isPause = false;
-    final RecordManager recordManager = RecordManager.getInstance();
+    private final RecordManager recordManager = RecordManager.getInstance();
+
+    private MediaProjectionManager mediaProjectionManager;
     private static final String[] STYLE_DATA = new String[]{"STYLE_ALL", "STYLE_NOTHING", "STYLE_WAVE", "STYLE_HOLLOW_LUMP"};
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        ButterKnife.bind(this);
+        initView();
         initAudioView();
         initEvent();
         initRecord();
@@ -78,17 +75,44 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 .start();
     }
 
+    private void initView() {
+        btRecord = findViewById(R.id.btRecord);
+        btStop = findViewById(R.id.btStop);
+        tvState = findViewById(R.id.tvState);
+        btRecord = findViewById(R.id.btRecord);
+        tvSoundSize = findViewById(R.id.tvSoundSize);
+        rgAudioFormat = findViewById(R.id.rgAudioFormat);
+        rgSimpleRate = findViewById(R.id.rgSimpleRate);
+        tbEncoding = findViewById(R.id.tbEncoding);
+        audioView = findViewById(R.id.audioView);
+        spUpStyle = findViewById(R.id.spUpStyle);
+        spDownStyle = findViewById(R.id.spDownStyle);
+        tbSource = findViewById(R.id.tbSource);
+        btRecord.setOnClickListener(this);
+        btStop.setOnClickListener(this);
+        findViewById(R.id.jumpTestActivity).setOnClickListener(this);
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
-        doStop();
         initRecordEvent();
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        doStop();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode == Activity.RESULT_OK && requestCode == 2000) {
+            if (data != null) {
+                MediaProjection mediaProjection = mediaProjectionManager.getMediaProjection(resultCode, data);
+                recordManager.setMediaProjection(mediaProjection);
+            }
+        }
     }
 
     private void initAudioView() {
@@ -105,18 +129,12 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         rgAudioFormat.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(RadioGroup group, int checkedId) {
-                switch (checkedId) {
-                    case R.id.rbPcm:
-                        recordManager.changeFormat(RecordConfig.RecordFormat.PCM);
-                        break;
-                    case R.id.rbMp3:
-                        recordManager.changeFormat(RecordConfig.RecordFormat.MP3);
-                        break;
-                    case R.id.rbWav:
-                        recordManager.changeFormat(RecordConfig.RecordFormat.WAV);
-                        break;
-                    default:
-                        break;
+                if (checkedId == R.id.rbPcm) {
+                    recordManager.changeFormat(RecordConfig.RecordFormat.PCM);
+                } else if (checkedId == R.id.rbMp3) {
+                    recordManager.changeFormat(RecordConfig.RecordFormat.MP3);
+                } else if (checkedId == R.id.rbWav) {
+                    recordManager.changeFormat(RecordConfig.RecordFormat.WAV);
                 }
             }
         });
@@ -124,18 +142,12 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         rgSimpleRate.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(RadioGroup group, int checkedId) {
-                switch (checkedId) {
-                    case R.id.rb8K:
-                        recordManager.changeRecordConfig(recordManager.getRecordConfig().setSampleRate(8000));
-                        break;
-                    case R.id.rb16K:
-                        recordManager.changeRecordConfig(recordManager.getRecordConfig().setSampleRate(16000));
-                        break;
-                    case R.id.rb44K:
-                        recordManager.changeRecordConfig(recordManager.getRecordConfig().setSampleRate(44100));
-                        break;
-                    default:
-                        break;
+                if (checkedId == R.id.rb8K) {
+                    recordManager.changeRecordConfig(recordManager.getRecordConfig().setSampleRate(8000));
+                } else if (checkedId == R.id.rb16K) {
+                    recordManager.changeRecordConfig(recordManager.getRecordConfig().setSampleRate(16000));
+                } else if (checkedId == R.id.rb44K) {
+                    recordManager.changeRecordConfig(recordManager.getRecordConfig().setSampleRate(44100));
                 }
             }
         });
@@ -143,15 +155,22 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         tbEncoding.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(RadioGroup group, int checkedId) {
-                switch (checkedId) {
-                    case R.id.rb8Bit:
-                        recordManager.changeRecordConfig(recordManager.getRecordConfig().setEncodingConfig(AudioFormat.ENCODING_PCM_8BIT));
-                        break;
-                    case R.id.rb16Bit:
-                        recordManager.changeRecordConfig(recordManager.getRecordConfig().setEncodingConfig(AudioFormat.ENCODING_PCM_16BIT));
-                        break;
-                    default:
-                        break;
+                if (checkedId == R.id.rb8Bit) {
+                    recordManager.changeRecordConfig(recordManager.getRecordConfig().setEncodingConfig(AudioFormat.ENCODING_PCM_8BIT));
+                } else if (checkedId == R.id.rb16Bit) {
+                    recordManager.changeRecordConfig(recordManager.getRecordConfig().setEncodingConfig(AudioFormat.ENCODING_PCM_16BIT));
+                }
+            }
+        });
+        tbSource.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(RadioGroup group, int checkedId) {
+                if (checkedId == R.id.rbMic) {
+                    recordManager.setSource(RecordConfig.SOURCE_MIC);
+                } else if (checkedId == R.id.rbSystem) {
+                    recordManager.setSource(RecordConfig.SOURCE_SYSTEM);
+                    mediaProjectionManager = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
+                    startActivityForResult(mediaProjectionManager.createScreenCaptureIntent(), 2000);
                 }
             }
         });
@@ -160,8 +179,9 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     private void initRecord() {
         recordManager.init(MainActivity.this, BuildConfig.DEBUG);
         recordManager.changeFormat(RecordConfig.RecordFormat.WAV);
-        String recordDir = String.format(Locale.getDefault(), "%s/Record/com.zlw.main/",
-                Environment.getExternalStorageDirectory().getAbsolutePath());
+        Context context = MainActivity.this;
+        String recordDir = String.format("%sRecord/tmp",
+                FileUtils.getInnerDir(context, ""));
         recordManager.changeRecordDir(recordDir);
         initRecordEvent();
     }
@@ -219,19 +239,15 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         });
     }
 
-    @OnClick({R.id.btRecord, R.id.btStop, R.id.jumpTestActivity})
-    public void onViewClicked(View view) {
-        switch (view.getId()) {
-            case R.id.btRecord:
-                doPlay();
-                break;
-            case R.id.btStop:
-                doStop();
-                break;
-            case R.id.jumpTestActivity:
-                startActivity(new Intent(this, TestHzActivity.class));
-            default:
-                break;
+    @Override
+    public void onClick(View view) {
+        int id = view.getId();
+        if (id == R.id.btRecord) {
+            doPlay();
+        } else if (id == R.id.btStop) {
+            doStop();
+        } else if (id == R.id.jumpTestActivity) {
+            startActivity(new Intent(this, TestHzActivity.class));
         }
     }
 
@@ -262,15 +278,11 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
     @Override
     public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-        switch (parent.getId()) {
-            case R.id.spUpStyle:
-                audioView.setStyle(AudioView.ShowStyle.getStyle(STYLE_DATA[position]), audioView.getDownStyle());
-                break;
-            case R.id.spDownStyle:
-                audioView.setStyle(audioView.getUpStyle(), AudioView.ShowStyle.getStyle(STYLE_DATA[position]));
-                break;
-            default:
-                break;
+        int parentId = parent.getId();
+        if (parentId == R.id.spUpStyle) {
+            audioView.setStyle(AudioView.ShowStyle.getStyle(STYLE_DATA[position]), audioView.getDownStyle());
+        } else if (parentId == R.id.spDownStyle) {
+            audioView.setStyle(audioView.getUpStyle(), AudioView.ShowStyle.getStyle(STYLE_DATA[position]));
         }
     }
 
